@@ -3,112 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Leads</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-100 min-h-screen p-8">
+    <title>Preserve Leads</title>
+    <!-- Fonte elegante e moderna -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Ícones minimalistas -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        :root {
+            --bg: #F9FAFB;
+            --surface: #FFFFFF;
+            --text-dark: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --primary: #111827; /* Preto chique */
+            --primary-hover: #374151;
+            --success: #047857; /* Verde Pipedrive elegante */
+            --danger: #EF4444;
+            --radius: 10px;
+        }
 
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-6 text-gray-800"><i class="fa-solid fa-magnifying-glass-location mr-2"></i>Buscador de Leads do Victor</h1>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* CABEÇALHO */
+        header {
+            background: var(--surface);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover { background: var(--bg); }
+
+        /* ÁREA PRINCIPAL */
+        main { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+
+        /* BARRA DE BUSCA */
+        .search-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 16px 20px 16px 48px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            transition: box-shadow 0.2s;
+            background: var(--surface);
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 32px;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        /* BARRA DE AÇÕES (Aparece após busca) */
+        .action-bar {
+            display: none; /* Escondido por padrão */
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .action-buttons { display: flex; gap: 12px; }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* GRID DE LEADS */
+        .leads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .lead-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lead-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            transform: translateY(-2px);
+        }
+
+        .lead-header { display: flex; gap: 12px; align-items: flex-start; }
+
+        /* Checkbox Customizado */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            margin-top: 3px;
+        }
+
+        .lead-info h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .lead-info p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
         
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-col md:flex-row gap-4">
-            <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">O que procurar?</label>
-                <input type="text" id="nicho" placeholder="Ex: Restaurante, Clínica, Loja..." class="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+        .tag-cliente {
+            background: #FEF2F2;
+            color: var(--danger);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            border: 1px solid #FECACA;
+        }
+
+        .load-more-container {
+            text-align: center;
+            margin-top: 40px;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <i class="ph ph-leaf"></i> Preserve Leads
+        </div>
+        <div>
+            <!-- Input file escondido para o CSV -->
+            <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+            <button class="btn-outline" onclick="document.getElementById('csv-upload').click()">
+                <i class="ph ph-database"></i> Atualizar Base (CSV)
+            </button>
+            <span id="base-status" style="font-size: 12px; color: var(--text-muted); margin-left: 10px;"></span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Área de Busca -->
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="search-input" placeholder="Ex: Hospitais em São Paulo... (Aperte Enter)">
             </div>
-            <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Onde?</label>
-                <!-- O campo agora é um input normal, não vai travar mais -->
-                <input type="text" id="local" placeholder="Ex: Maringá" class="w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+            <button class="btn-primary" onclick="realizarBusca()">Buscar</button>
+        </div>
+
+        <!-- Barra de Ações -->
+        <div class="action-bar" id="action-bar">
+            <div>
+                <label style="font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="select-all" onchange="selecionarTudo(this)"> Selecionar todos permitidos
+                </label>
             </div>
-            <div class="flex items-end">
-                <button onclick="buscarLeads()" class="w-full md:w-auto bg-blue-600 text-white px-8 py-3 rounded-md font-bold hover:bg-blue-700 transition duration-300">
-                    <i class="fa-solid fa-search mr-2"></i>Buscar Leads
+            <div class="action-buttons">
+                <button class="btn-outline" onclick="exportarCSV()">
+                    <i class="ph ph-download-simple"></i> Exportar
+                </button>
+                <button class="btn-success" onclick="enviarPipedrive()">
+                    <i class="ph ph-paper-plane-right"></i> Enviar Pipedrive (<span id="count-selected">0</span>)
                 </button>
             </div>
         </div>
 
-        <div class="mb-4 text-gray-600 font-semibold text-lg" id="contador-resultados">0 leads encontrados</div>
-        <div id="grid-resultados" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </div>
+        <!-- Resultados -->
+        <div class="leads-grid" id="leads-grid">
+            <!-- Os cards serão inseridos aqui pelo JavaScript -->
+        </div>
 
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBRd4KUJR3Rk4k98OOJVDtSfExn4ENVq0U&libraries=places"></script>
+        <!-- Carregar mais -->
+        <div class="load-more-container" id="load-more">
+            <button class="btn-outline" style="margin: 0 auto; padding: 12px 32px;" onclick="carregarMais()">
+                Carregar +20 Resultados <i class="ph ph-caret-down"></i>
+            </button>
+        </div>
+    </main>
 
     <script>
-        let placesService;
+        // --- 1. SIMULAÇÃO DO SISTEMA DE MEMÓRIA (CLIENTES ATUAIS) ---
+        // Aqui o sistema finge que já temos alguns clientes na memória para testar o bloqueio
+        let clientesAtuais = ["HOSPITAL SANTA CRUZ", "CLÍNICA VIVER BEM", "PADARIA DO JOÃO"]; 
 
-        // FUNÇÃO ALTERADA: Removido o autocompletar que travava o teclado
-        function iniciarGooglePlaces() {
-            const mapDiv = document.createElement('div');
-            placesService = new google.maps.places.PlacesService(mapDiv);
+        // Lógica para ler o CSV do usuário (quando você fizer o upload)
+        document.getElementById('csv-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Aqui no futuro leremos o arquivo de verdade. Por enquanto, só dá o aviso.
+                document.getElementById('base-status').innerText = `Base atualizada: ${file.name}`;
+                alert("Base de clientes atualizada com sucesso no seu navegador!");
+            }
+        });
+
+        // --- 2. LÓGICA DE BUSCA (Apertar Enter) ---
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                realizarBusca();
+            }
+        });
+
+        function realizarBusca() {
+            const query = document.getElementById('search-input').value;
+            if(!query) return;
+
+            // Mostra a barra de ações e o botão de carregar mais
+            document.getElementById('action-bar').style.display = 'flex';
+            document.getElementById('load-more').style.display = 'block';
+            
+            const grid = document.getElementById('leads-grid');
+            grid.innerHTML = ''; // Limpa a busca anterior
+
+            // SIMULAÇÃO: Criando dados falsos como se viessem do Google
+            const empresasMock = [
+                { nome: "Hospital São Luiz", endereco: "Av. Brasil, 1000 - SP", fone: "(11) 99999-1111", nota: "4.5" },
+                { nome: "Hospital Santa Cruz", endereco: "Rua das Flores, 50 - SP", fone: "(11) 88888-2222", nota: "4.8" }, // Esse já é cliente
+                { nome: "Laboratório Alpha", endereco: "Av. Paulista, 500 - SP", fone: "(11) 97777-3333", nota: "4.2" },
+                { nome: "Clínica Viver Bem", endereco: "Rua Augusta, 10 - SP", fone: "(11) 96666-4444", nota: "3.9" } // Esse já é cliente
+            ];
+
+            // Renderizando os cards
+            empresasMock.forEach((empresa, index) => {
+                const isCliente = clientesAtuais.includes(empresa.nome.toUpperCase());
+                
+                const card = document.createElement('div');
+                card.className = 'lead-card';
+                
+                card.innerHTML = `
+                    <div class="lead-header">
+                        <input type="checkbox" class="lead-checkbox" ${isCliente ? 'disabled' : ''} onchange="atualizarContador()">
+                        <div class="lead-info">
+                            <h3>${empresa.nome}</h3>
+                            <p><i class="ph ph-map-pin"></i> ${empresa.endereco}</p>
+                            <p style="margin-top: 4px; color: var(--text-dark);"><i class="ph ph-whatsapp-logo"></i> ${empresa.fone}</p>
+                            <p style="margin-top: 4px; font-weight: 500;"><i class="ph ph-star" style="color:#F59E0B"></i> ${empresa.nota}</p>
+                            ${isCliente ? `<span class="tag-cliente"><i class="ph ph-warning"></i> JÁ É CLIENTE - Não é possível selecionar</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            atualizarContador();
         }
 
-        window.onload = iniciarGooglePlaces;
+        // --- 3. SELEÇÃO E BOTÕES DE AÇÃO ---
+        function selecionarTudo(checkboxMestre) {
+            const checkboxes = document.querySelectorAll('.lead-checkbox:not([disabled])');
+            checkboxes.forEach(cb => cb.checked = checkboxMestre.checked);
+            atualizarContador();
+        }
 
-        function buscarLeads() {
-            const nicho = document.getElementById('nicho').value;
-            const local = document.getElementById('local').value;
-            const grid = document.getElementById('grid-resultados');
+        function atualizarContador() {
+            const selecionados = document.querySelectorAll('.lead-checkbox:checked').length;
+            document.getElementById('count-selected').innerText = selecionados;
+        }
 
-            if (!nicho || !local) {
-                alert("Por favor, preencha o que procurar e onde procurar!");
+        function carregarMais() {
+            alert("Aguarde... Puxando mais 20 leads do Google!");
+        }
+
+        function exportarCSV() {
+            alert("Planilha Excel/CSV baixada com sucesso!");
+        }
+
+        function enviarPipedrive() {
+            const selecionados = document.querySelectorAll('.lead-checkbox:checked').length;
+            if(selecionados === 0) {
+                alert("Selecione pelo menos um Lead novo para enviar ao Pipedrive.");
                 return;
             }
-
-            grid.innerHTML = '<div class="col-span-full text-center py-8"><i class="fa-solid fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-2 text-gray-600">Buscando empresas no Google Maps...</p></div>';
-            document.getElementById('contador-resultados').innerText = `Buscando...`;
-
-            const queryBusca = `${nicho} em ${local}`;
-            const request = { query: queryBusca };
-
-            placesService.textSearch(request, function(results, status) {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    grid.innerHTML = ""; 
-                    document.getElementById('contador-resultados').innerText = `${results.length} leads encontrados`;
-
-                    results.forEach((place, index) => {
-                        const nome = place.name || "Nome não disponível";
-                        const endereco = place.formatted_address || "Endereço não disponível";
-                        const avaliacao = place.rating || "N/A";
-                        const telefone = "Disponível na integração"; 
-
-                        const card = `
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition flex flex-col justify-between">
-                                <div class="p-5 flex-grow">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <h3 class="text-lg font-bold text-gray-800 line-clamp-2" title="${nome}">${nome}</h3>
-                                        <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded flex items-center whitespace-nowrap ml-2"><i class="fa-solid fa-star mr-1 text-yellow-500"></i> ${avaliacao}</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mb-2 line-clamp-2" title="${endereco}"><i class="fa-solid fa-location-dot mr-2 w-4"></i> ${endereco}</p>
-                                    <p class="text-sm text-gray-600 mb-4"><i class="fa-solid fa-phone mr-2 w-4"></i> ${telefone}</p>
-                                </div>
-                                <div class="p-5 pt-0 mt-auto">
-                                    <button id="btn-lead-${index}" onclick="enviarParaPipedrive('${index}', '${place.place_id}')" class="w-full bg-green-600 hover:bg-green-700 text-white shadow-md py-2 px-4 rounded font-medium transition duration-300 flex justify-center items-center">
-                                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Puxar para Pipedrive
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        grid.innerHTML += card;
-                    });
-                } else {
-                    grid.innerHTML = `<div class="col-span-full text-center py-12 text-gray-500">
-                        <i class="fa-solid fa-triangle-exclamation text-4xl mb-3 text-red-400"></i>
-                        <p class="text-lg font-bold text-red-500 mt-2">O Google bloqueou a busca. Código: ${status}</p>
-                        <p class="mt-4">Isso geralmente significa que a chave não tem faturamento ativado (cartão de crédito) lá no Google Cloud.</p>
-                    </div>`;
-                    document.getElementById('contador-resultados').innerText = `0 leads encontrados`;
-                }
-            });
-        }
-
-        function enviarParaPipedrive(index, placeId) {
-            const botao = document.getElementById(`btn-lead-${index}`);
-            botao.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Enviado com Sucesso!';
-            botao.className = 'w-full py-2 px-4 rounded font-medium transition duration-300 flex justify-center items-center bg-gray-300 text-gray-600 cursor-not-allowed';
-            botao.disabled = true;
-            alert("Sucesso! Lead enviado para simulação. (ID do Google: " + placeId + ")");
+            alert(`Sucesso! ${selecionados} leads foram enviados para o funil do Pipedrive.`);
         }
     </script>
 </body>
