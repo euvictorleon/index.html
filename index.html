@@ -146,6 +146,25 @@
             // Alerta simulando o aviso do sistema
             alert("Sucesso! O lead foi criado no Pipedrive e bloqueado para os outros vendedores.");
         }
+
+        // --- FUNÇÃO DO GOOGLE PLACES ADICIONADA AQUI ---
+        function iniciarGooglePlaces() {
+            // Pega o campo "Onde?" pelo ID
+            var input = document.getElementById('local');
+
+            // Inicia a função de Autocomplete do Google Places
+            var autocomplete = new google.maps.places.Autocomplete(input);
+
+            // Restringir a busca apenas para o Brasil (opcional, mas recomendado)
+            autocomplete.setComponentRestrictions({
+                country: ["br"]
+            });
+        }
     </script>
+
+    <!-- SCRIPT DA API DO GOOGLE ADICIONADO AQUI -->
+    <!-- IMPORTANTE: Troque SUA_CHAVE_AQUI pela sua chave gerada no Google Cloud -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE_AQUI&libraries=places&callback=iniciarGooglePlaces"></script>
+
 </body>
 </html>
