@@ -274,7 +274,6 @@
       gap: 16px;
     }
 
-    /* Alterado para 5 colunas para caber a Rua */
     .grid-search {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr 1fr auto;
@@ -628,7 +627,6 @@
       background: #f8fafc;
     }
 
-    /* Responsividade atualizada para os 4 campos de busca */
     @media (max-width: 1400px) {
       .grid-search {
         grid-template-columns: 1fr 1fr;
@@ -993,7 +991,6 @@
       renderSavedLeads();
       renderExportedLeads();
 
-      // Carregando últimos filtros usados
       const savedNiche = localStorage.getItem('vlhunt_last_niche') || '';
       const savedCity = localStorage.getItem('vlhunt_last_city') || '';
       const savedDistrict = localStorage.getItem('vlhunt_last_district') || '';
@@ -1010,7 +1007,6 @@
         loadGoogleMapsScript(settings.googleApiKey);
       }
 
-      // Enter aciona a busca para os 4 campos agora
       const searchFields = document.querySelectorAll('#nicheInput, #cityInput, #districtInput, #streetInput');
       searchFields.forEach(field => {
         field.addEventListener('keypress', (event) => {
@@ -1155,20 +1151,17 @@
         return;
       }
 
-      // Salva os filtros
       localStorage.setItem('vlhunt_last_niche', niche);
       localStorage.setItem('vlhunt_last_city', city);
       localStorage.setItem('vlhunt_last_district', district);
       localStorage.setItem('vlhunt_last_street', street);
 
-      // Construtor Inteligente de Busca para o Google
       let queryParts = [niche];
       if (street) queryParts.push(`na ${street}`);
       if (district) queryParts.push(`bairro ${district}`);
       queryParts.push(`em ${city}`);
       
       const query = queryParts.join(' ');
-      console.log('Buscando por:', query); // Para você ver no console como ele monta a frase
 
       detailsQueue = [];
       isProcessingQueue = false;
@@ -1195,6 +1188,10 @@
 
     function handlePlacesResults(results, status, pagination, append) {
       
+      // SOLUÇÃO DO ENGARRAFAMENTO: Retoma o trânsito da fila de telefones assim que a página chegar!
+      isProcessingQueue = false;
+      processQueue(); 
+
       if (status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
          toast('Google pediu um respiro. Tentando novamente sozinho em 2s...');
          setTimeout(() => {
@@ -1210,20 +1207,22 @@
       if (status === google.maps.places.PlacesServiceStatus.INVALID_REQUEST && isLoadingMore) {
          window.vlHuntRetries = (window.vlHuntRetries || 0) + 1;
          
-         if (window.vlHuntRetries > 4) {
-             toast('Erro contínuo do Google na paginação. Tente buscar uma região específica.');
+         if (window.vlHuntRetries > 3) {
+             toast('Próxima página ainda não pronta no Google. Aguarde uns segundos e tente clicar em "Próxima" de novo.');
              isLoadingMore = false;
              window.vlHuntRetries = 0;
              renderPaginationControls(leads.length);
              return;
          }
 
-         toast(`Aguardando liberação do Google... (Tentativa ${window.vlHuntRetries}/4)`);
+         toast(`Aguardando liberação da página do Google... (Tentativa ${window.vlHuntRetries}/3)`);
          setTimeout(() => {
             if (placesPagination && placesPagination.hasNextPage) {
+               // Pausa a fila antes de pedir a página de novo (Regra de trânsito)
+               isProcessingQueue = true;
                placesPagination.nextPage();
             }
-         }, 2500);
+         }, 2000);
          return; 
       }
 
@@ -1268,7 +1267,7 @@
         nextTokenTimer = setTimeout(() => {
           nextTokenReady = true;
           renderPaginationControls(leads.length);
-        }, 3500); 
+        }, 2500); 
       } else {
         nextTokenReady = true;
       }
@@ -1307,13 +1306,20 @@
       isLoadingMore = true;
       renderPaginationControls(leads.length); 
 
-      try {
-        placesPagination.nextPage();
-      } catch (error) {
-        console.error(error);
-        isLoadingMore = false;
-        renderPaginationControls(leads.length);
-      }
+      // SOLUÇÃO DO ENGARRAFAMENTO: Pausar a fila de telefones para pedir a página
+      isProcessingQueue = true; 
+
+      setTimeout(() => {
+          try {
+            placesPagination.nextPage();
+          } catch (error) {
+            console.error(error);
+            isLoadingMore = false;
+            isProcessingQueue = false; // Retoma se der erro
+            processQueue();
+            renderPaginationControls(leads.length);
+          }
+      }, 500);
     }
 
     function renderPaginationControls(totalLeads) {
@@ -1376,6 +1382,7 @@
     }
 
     function processQueue() {
+      // Se tiver buscando a página (trânsito pausado), ele não faz nada até liberar!
       if (isProcessingQueue || detailsQueue.length === 0) return;
       isProcessingQueue = true;
 
