@@ -949,7 +949,11 @@
     let placesPagination = null;
     let isLoadingMore = false;
 
-    // Fila anti-travamento para chamadas da API do Google
+    // Variáveis anti-travamento para paginação do Google
+    let nextTokenReady = false;
+    let nextTokenTimer = null;
+
+    // Fila anti-travamento para buscar telefones
     let detailsQueue = [];
     let isProcessingQueue = false;
 
@@ -1042,7 +1046,7 @@
 
       window.__toastTimer = setTimeout(() => {
         el.style.display = 'none';
-      }, 3200);
+      }, 3500);
     }
 
     function loadLocalData() {
@@ -1152,7 +1156,7 @@
 
       placesService = new google.maps.places.PlacesService(map);
 
-      toast('Google Maps carregado.');
+      toast('Google Maps carregado e pronto.');
     }
 
     function updateCounters() {
@@ -1204,6 +1208,7 @@
       // Reset total
       detailsQueue = [];
       isProcessingQueue = false;
+      nextTokenReady = false;
       leads = [];
       selectedLeadIds.clear();
       placesPagination = null;
@@ -1236,7 +1241,12 @@
           renderLeads();
         }
 
-        toast('Fim dos resultados ou nenhum lead encontrado.');
+        if (leads.length >= 60) {
+            toast('Limite do Google atingido (60 resultados por pesquisa). Busque por um BAIRRO específico para achar mais leads nessa cidade!');
+        } else {
+            toast('Fim dos resultados encontrados para esta pesquisa.');
+        }
+
         isLoadingMore = false;
         renderPaginationControls(leads.length);
         updateCounters();
@@ -1248,12 +1258,24 @@
 
         if (!leads.some(lead => lead.place_id === normalized.place_id)) {
           leads.push(normalized);
-          // Substituída a busca imediata pela FILA ANTI-TRAVAMENTO
+          // Puxa os dados com a fila anti-bloqueio
           fetchPlaceDetailsQueue(normalized.place_id);
         }
       });
 
+      // LÓGICA CORRIGIDA: Google exige 2 a 3 segundos de espera antes de liberar a Próxima página
       placesPagination = pagination && pagination.hasNextPage ? pagination : null;
+      clearTimeout(nextTokenTimer);
+      
+      if (placesPagination) {
+        nextTokenReady = false;
+        nextTokenTimer = setTimeout(() => {
+          nextTokenReady = true;
+          renderPaginationControls(leads.length); // Habilita o botão "Próxima"
+        }, 2500); // Exatos 2.5s para o Google gerar o token validado
+      } else {
+        nextTokenReady = true;
+      }
 
       if (isLoadingMore) {
         currentPage++;
@@ -1262,8 +1284,6 @@
 
       renderLeads();
       updateCounters();
-
-      toast(`${results.length} leads carregados.`);
     }
 
     function changePage(direction) {
@@ -1286,23 +1306,19 @@
 
     function loadMoreLeadsForPagination() {
       if (!placesPagination || !placesPagination.hasNextPage) return;
-      if (isLoadingMore) return;
+      if (isLoadingMore || !nextTokenReady) return; // Segurança contra bloqueio do Google
 
       isLoadingMore = true;
+      renderPaginationControls(leads.length); // Mostra que tá carregando
 
-      const container = document.getElementById('paginationControls');
-      container.innerHTML = `<span style="display: flex; align-items: center; font-weight: 800; font-size: 14px; color: var(--muted);">Buscando mais resultados no Google... ⏳</span>`;
-
-      setTimeout(() => {
-        try {
-          placesPagination.nextPage();
-        } catch (error) {
-          console.error(error);
-          toast('Erro ao carregar mais leads.');
-          isLoadingMore = false;
-          renderPaginationControls(leads.length);
-        }
-      }, 2200);
+      try {
+        placesPagination.nextPage();
+      } catch (error) {
+        console.error(error);
+        toast('Erro ao se comunicar com o Google.');
+        isLoadingMore = false;
+        renderPaginationControls(leads.length);
+      }
     }
 
     function renderPaginationControls(totalLeads) {
@@ -1317,15 +1333,23 @@
       const totalPages = Math.ceil(totalLeads / leadsPerPage);
       const hasMoreFromApi = placesPagination && placesPagination.hasNextPage;
 
-      const isNextDisabled = (!hasMoreFromApi && currentPage >= totalPages) || isLoadingMore;
+      // Desabilita o botão Próxima se estiver carregando ou se o Google ainda não liberou o tempo (2.5s)
+      const isNextDisabled = (!hasMoreFromApi && currentPage >= totalPages) || isLoadingMore || (hasMoreFromApi && currentPage >= totalPages && !nextTokenReady);
       const isPrevDisabled = currentPage === 1 || isLoadingMore;
+
+      let nextBtnText = "Próxima";
+      if (hasMoreFromApi && currentPage >= totalPages && !nextTokenReady) {
+          nextBtnText = "Gerando página... ⏳";
+      } else if (isLoadingMore) {
+          nextBtnText = "Buscando...";
+      }
 
       container.innerHTML = `
         <button class="btn btn-soft-gray" onclick="changePage(-1)" ${isPrevDisabled ? 'disabled' : ''}>Anterior</button>
         <span style="display: flex; align-items: center; font-weight: 800; font-size: 14px; padding: 0 15px; color: var(--muted);">
           Página ${currentPage} ${totalPages > 1 ? `de ${Math.max(totalPages, currentPage)}` : ''}
         </span>
-        <button class="btn btn-soft-gray" onclick="changePage(1)" ${isNextDisabled ? 'disabled' : ''}>Próxima</button>
+        <button class="btn btn-soft-gray" onclick="changePage(1)" ${isNextDisabled ? 'disabled' : ''}>${nextBtnText}</button>
       `;
     }
 
@@ -1351,7 +1375,6 @@
       };
     }
 
-    // NOVA FUNÇÃO: Fila Anti-Travamento (Substitui a antiga que dava Over Query Limit)
     function fetchPlaceDetailsQueue(placeId) {
       detailsQueue.push(placeId);
       processQueue();
@@ -1396,7 +1419,6 @@
                   : leads[index].photo
               };
 
-              // Só força atualizar a tela se o lead modificado estiver na página atual do usuário
               const startIndex = (currentPage - 1) * leadsPerPage;
               const endIndex = startIndex + leadsPerPage;
               if (index >= startIndex && index < endIndex) {
@@ -1405,7 +1427,6 @@
             }
           }
 
-          // Espera 350 milissegundos antes de pedir o próximo para não travar a API do Google
           setTimeout(() => {
             isProcessingQueue = false;
             processQueue();
@@ -1885,6 +1906,7 @@ Comercial: ${settings.commercial || ''}
     function clearResults() {
       detailsQueue = [];
       isProcessingQueue = false;
+      nextTokenReady = false;
       leads = [];
       selectedLeadIds.clear();
       placesPagination = null;
