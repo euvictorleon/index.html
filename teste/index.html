@@ -274,9 +274,10 @@
       gap: 16px;
     }
 
+    /* Alterado para 5 colunas para caber a Rua */
     .grid-search {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr 1fr 1fr auto;
       gap: 16px;
       align-items: end;
     }
@@ -627,11 +628,23 @@
       background: #f8fafc;
     }
 
+    /* Responsividade atualizada para os 4 campos de busca */
+    @media (max-width: 1400px) {
+      .grid-search {
+        grid-template-columns: 1fr 1fr;
+      }
+      #searchBtn {
+        width: 100%;
+      }
+      .grid-search .field:last-child {
+        grid-column: 1 / -1;
+      }
+    }
+
     @media (max-width: 1200px) {
       .leads-grid {
         grid-template-columns: repeat(2, 1fr);
       }
-
       .stats,
       .grid-3 {
         grid-template-columns: repeat(2, 1fr);
@@ -644,29 +657,28 @@
         width: 100%;
         bottom: auto;
       }
-
       .app {
         display: block;
       }
-
       .main {
         margin-left: 0;
         width: 100%;
         padding: 22px 16px;
       }
-
       .topbar,
       .section-head {
         align-items: flex-start;
         flex-direction: column;
       }
-
       .stats,
       .grid-3,
       .grid-2,
       .grid-search,
       .leads-grid {
         grid-template-columns: 1fr;
+      }
+      .grid-search .field:last-child {
+        grid-column: auto;
       }
     }
   </style>
@@ -719,7 +731,7 @@
 
       <div class="stats">
         <div class="stat-card">
-          <span>Encontrados</span>
+          <span>Na Tela</span>
           <strong id="foundCount">0</strong>
         </div>
 
@@ -746,7 +758,7 @@
             <div class="section-icon">🔎</div>
             <div>
               <h3>Buscar leads</h3>
-              <p>Digite o nicho e a região para encontrar empresas.</p>
+              <p>Busque por cidade, bairro e até a rua exata para não deixar ninguém escapar.</p>
             </div>
           </div>
 
@@ -762,8 +774,13 @@
             </div>
 
             <div class="field">
-              <label for="districtInput">Bairro</label>
+              <label for="districtInput">Bairro <span style="font-weight: normal; color: var(--muted); text-transform: none;">(Opcional)</span></label>
               <input id="districtInput" type="text" placeholder="Ex: Zona 7" />
+            </div>
+
+            <div class="field">
+              <label for="streetInput">Rua/Avenida <span style="font-weight: normal; color: var(--muted); text-transform: none;">(Opcional)</span></label>
+              <input id="streetInput" type="text" placeholder="Ex: Av. Colombo" />
             </div>
 
             <div class="field">
@@ -949,15 +966,12 @@
     let placesPagination = null;
     let isLoadingMore = false;
 
-    // Variáveis anti-travamento para paginação do Google
     let nextTokenReady = false;
     let nextTokenTimer = null;
 
-    // Fila anti-travamento para buscar telefones
     let detailsQueue = [];
     let isProcessingQueue = false;
 
-    // Variáveis da Paginação
     let currentPage = 1;
     const leadsPerPage = 20;
 
@@ -979,13 +993,16 @@
       renderSavedLeads();
       renderExportedLeads();
 
+      // Carregando últimos filtros usados
       const savedNiche = localStorage.getItem('vlhunt_last_niche') || '';
       const savedCity = localStorage.getItem('vlhunt_last_city') || '';
       const savedDistrict = localStorage.getItem('vlhunt_last_district') || '';
+      const savedStreet = localStorage.getItem('vlhunt_last_street') || '';
 
       document.getElementById('nicheInput').value = savedNiche;
       document.getElementById('cityInput').value = savedCity;
       document.getElementById('districtInput').value = savedDistrict;
+      document.getElementById('streetInput').value = savedStreet;
 
       const settings = getSettings();
 
@@ -993,7 +1010,8 @@
         loadGoogleMapsScript(settings.googleApiKey);
       }
 
-      const searchFields = document.querySelectorAll('#nicheInput, #cityInput, #districtInput');
+      // Enter aciona a busca para os 4 campos agora
+      const searchFields = document.querySelectorAll('#nicheInput, #cityInput, #districtInput, #streetInput');
       searchFields.forEach(field => {
         field.addEventListener('keypress', (event) => {
           if (event.key === 'Enter') {
@@ -1013,28 +1031,14 @@
       };
 
       Object.values(sections).forEach(el => el.classList.add('hidden'));
+      if (sections[section]) sections[section].classList.remove('hidden');
 
-      if (sections[section]) {
-        sections[section].classList.remove('hidden');
-      }
-
-      document.querySelectorAll('.menu-item').forEach(btn => {
-        btn.classList.remove('active');
-      });
-
+      document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
       const activeButton = document.querySelector(`.menu-item[data-section="${section}"]`);
+      if (activeButton) activeButton.classList.add('active');
 
-      if (activeButton) {
-        activeButton.classList.add('active');
-      }
-
-      if (section === 'saved') {
-        renderSavedLeads();
-      }
-
-      if (section === 'pipedrive') {
-        renderExportedLeads();
-      }
+      if (section === 'saved') renderSavedLeads();
+      if (section === 'pipedrive') renderExportedLeads();
     }
 
     function toast(message) {
@@ -1043,32 +1047,18 @@
       el.style.display = 'block';
 
       clearTimeout(window.__toastTimer);
-
       window.__toastTimer = setTimeout(() => {
         el.style.display = 'none';
-      }, 4000); // tempo estendido para leitura
+      }, 3500); 
     }
 
     function loadLocalData() {
-      try {
-        savedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.saved) || '[]');
-      } catch {
-        savedLeads = [];
-      }
-
-      try {
-        exportedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.exported) || '[]');
-      } catch {
-        exportedLeads = [];
-      }
+      try { savedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.saved) || '[]'); } catch { savedLeads = []; }
+      try { exportedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.exported) || '[]'); } catch { exportedLeads = []; }
     }
 
     function getSettings() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEYS.settings) || '{}');
-      } catch {
-        return {};
-      }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.settings) || '{}'); } catch { return {}; }
     }
 
     function fillSettingsFields() {
@@ -1090,9 +1080,7 @@
       document.getElementById('topUserName').textContent = settings.commercial;
       toast('Configurações salvas.');
 
-      if (settings.googleApiKey) {
-        loadGoogleMapsScript(settings.googleApiKey);
-      }
+      if (settings.googleApiKey) loadGoogleMapsScript(settings.googleApiKey);
     }
 
     function clearSettings() {
@@ -1138,22 +1126,17 @@
     }
 
     function updateCounters() {
-      const encontrados = leads.length;
-      const salvos = savedLeads.length;
-      const exportados = exportedLeads.length;
-      const pendentes = encontrados - salvos;
-      const pendentesFinal = pendentes >= 0 ? pendentes : 0;
-
-      document.getElementById('foundCount').textContent = encontrados;
-      document.getElementById('savedCount').textContent = salvos;
-      document.getElementById('exportedCount').textContent = exportados;
-      document.getElementById('pendingCount').textContent = pendentesFinal;
+      document.getElementById('foundCount').textContent = leads.length;
+      document.getElementById('savedCount').textContent = savedLeads.length;
+      document.getElementById('exportedCount').textContent = exportedLeads.length;
+      document.getElementById('pendingCount').textContent = leads.length; 
     }
 
     function searchLeads() {
       const niche = document.getElementById('nicheInput').value.trim();
       const city = document.getElementById('cityInput').value.trim();
       const district = document.getElementById('districtInput').value.trim();
+      const street = document.getElementById('streetInput').value.trim();
 
       if (!niche || !city) {
         toast('Informe pelo menos nicho e cidade.');
@@ -1172,13 +1155,21 @@
         return;
       }
 
+      // Salva os filtros
       localStorage.setItem('vlhunt_last_niche', niche);
       localStorage.setItem('vlhunt_last_city', city);
       localStorage.setItem('vlhunt_last_district', district);
+      localStorage.setItem('vlhunt_last_street', street);
 
-      const query = district ? `${niche} em ${district}, ${city}` : `${niche} em ${city}`;
+      // Construtor Inteligente de Busca para o Google
+      let queryParts = [niche];
+      if (street) queryParts.push(`na ${street}`);
+      if (district) queryParts.push(`bairro ${district}`);
+      queryParts.push(`em ${city}`);
+      
+      const query = queryParts.join(' ');
+      console.log('Buscando por:', query); // Para você ver no console como ele monta a frase
 
-      // Reset
       detailsQueue = [];
       isProcessingQueue = false;
       nextTokenReady = false;
@@ -1187,6 +1178,7 @@
       placesPagination = null;
       isLoadingMore = false;
       currentPage = 1;
+      window.vlHuntRetries = 0; 
 
       document.getElementById('selectAllCheckbox').checked = false;
       document.getElementById('searchBtn').disabled = true;
@@ -1203,31 +1195,40 @@
 
     function handlePlacesResults(results, status, pagination, append) {
       
-      // AUTO-RETENTATIVA 1: O Google pediu para você ir mais devagar
       if (status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
          toast('Google pediu um respiro. Tentando novamente sozinho em 2s...');
          setTimeout(() => {
             if (placesPagination && placesPagination.hasNextPage) {
                placesPagination.nextPage();
             } else if (!isLoadingMore) {
-               document.getElementById('searchBtn').click(); // refaz a busca 1
+               document.getElementById('searchBtn').click(); 
             }
          }, 2000);
-         return; // Interrompe para não cancelar a busca!
+         return; 
       }
 
-      // AUTO-RETENTATIVA 2: O Token de Próxima Página do Google ainda não validou no servidor deles
       if (status === google.maps.places.PlacesServiceStatus.INVALID_REQUEST && isLoadingMore) {
-         toast('Sincronizando com os servidores do Google... aguarde.');
+         window.vlHuntRetries = (window.vlHuntRetries || 0) + 1;
+         
+         if (window.vlHuntRetries > 4) {
+             toast('Erro contínuo do Google na paginação. Tente buscar uma região específica.');
+             isLoadingMore = false;
+             window.vlHuntRetries = 0;
+             renderPaginationControls(leads.length);
+             return;
+         }
+
+         toast(`Aguardando liberação do Google... (Tentativa ${window.vlHuntRetries}/4)`);
          setTimeout(() => {
             if (placesPagination && placesPagination.hasNextPage) {
                placesPagination.nextPage();
             }
-         }, 2000);
-         return; // Interrompe para não cancelar a busca!
+         }, 2500);
+         return; 
       }
 
-      // TRATAMENTO DE ERROS REAIS E FIM DE RESULTADOS
+      window.vlHuntRetries = 0;
+
       if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) {
         if (!append && !isLoadingMore) {
           leads = [];
@@ -1250,16 +1251,15 @@
         return;
       }
 
-      // SUCESSO - Adicionando Leads
       results.forEach(place => {
         const normalized = normalizePlace(place);
-        if (!leads.some(lead => lead.place_id === normalized.place_id)) {
+        if (!leads.some(lead => lead.place_id === normalized.place_id) && 
+            !savedLeads.some(saved => saved.place_id === normalized.place_id)) {
           leads.push(normalized);
           fetchPlaceDetailsQueue(normalized.place_id);
         }
       });
 
-      // LÓGICA DE PAGINAÇÃO
       placesPagination = pagination && pagination.hasNextPage ? pagination : null;
       clearTimeout(nextTokenTimer);
       
@@ -1268,7 +1268,7 @@
         nextTokenTimer = setTimeout(() => {
           nextTokenReady = true;
           renderPaginationControls(leads.length);
-        }, 3000); // 3 Segundos exatos para garantir que o Google liberou o Token!
+        }, 3500); 
       } else {
         nextTokenReady = true;
       }
@@ -1333,7 +1333,7 @@
 
       let nextBtnText = "Próxima";
       if (hasMoreFromApi && currentPage >= totalPages && !nextTokenReady) {
-          nextBtnText = "Gerando página... ⏳";
+          nextBtnText = "Gerando próxima... ⏳";
       } else if (isLoadingMore) {
           nextBtnText = "Buscando...";
       }
@@ -1392,13 +1392,12 @@
           fields: ['name', 'formatted_address', 'formatted_phone_number', 'international_phone_number', 'website', 'url', 'rating', 'user_ratings_total', 'photos']
         },
         (place, status) => {
-          // SE O GOOGLE BARRAR A FILA, ELA ESPERA E TENTA DE NOVO SOZINHA!
           if (status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
-             detailsQueue.unshift(placeId); // Devolve o lead pra fila
+             detailsQueue.unshift(placeId); 
              setTimeout(() => {
                 isProcessingQueue = false;
                 processQueue();
-             }, 2000); // Espera 2 segundinhos e continua
+             }, 2000); 
              return;
           }
 
@@ -1427,7 +1426,6 @@
             }
           }
 
-          // Aumentei pra 500ms para a API do Google respirar melhor
           setTimeout(() => {
             isProcessingQueue = false;
             processQueue();
@@ -1443,6 +1441,11 @@
       grid.innerHTML = '';
 
       if (!leads.length) {
+        if (placesPagination && placesPagination.hasNextPage) {
+           empty.innerHTML = 'Todos os leads desta página foram salvos ou limpos.<br><br><button class="btn btn-dark" onclick="loadMoreLeadsForPagination()">Buscar próximos leads</button>';
+        } else {
+           empty.innerHTML = 'Nenhum lead pesquisado ainda (ou todos já foram salvos).';
+        }
         empty.classList.remove('hidden');
         renderPaginationControls(0);
         updateCounters();
@@ -1582,33 +1585,48 @@
       return leads.filter(lead => selectedLeadIds.has(lead.place_id));
     }
 
+    function saveLeadById(placeId) {
+      const leadIndex = leads.findIndex(item => item.place_id === placeId);
+      if (leadIndex !== -1) {
+         const leadToSave = leads[leadIndex];
+         if (saveLead(leadToSave, true)) {
+            leads.splice(leadIndex, 1);
+            selectedLeadIds.delete(placeId);
+            renderLeads();
+         }
+      } else {
+         toast('Lead já salvo ou não encontrado.');
+      }
+    }
+
     function saveSelectedLeads() {
       const selected = getSelectedLeads();
       if (!selected.length) {
         toast('Selecione pelo menos um lead.');
         return;
       }
-      selected.forEach(lead => saveLead(lead, false));
+      
+      let count = 0;
+      selected.forEach(lead => {
+         if (saveLead(lead, false)) {
+            count++;
+         }
+      });
+
+      leads = leads.filter(item => !selectedLeadIds.has(item.place_id));
+      selectedLeadIds.clear();
+
       persistSavedLeads();
       renderSavedLeads();
+      renderLeads();
       updateCounters();
-      toast(`${selected.length} leads salvos.`);
-    }
-
-    function saveLeadById(placeId) {
-      const lead = leads.find(item => item.place_id === placeId) ||
-        savedLeads.find(item => item.place_id === placeId);
-      if (!lead) {
-        toast('Lead não encontrado.');
-        return;
-      }
-      saveLead(lead, true);
+      toast(`${count} leads salvos (enviados p/ aba Salvos).`);
     }
 
     function saveLead(lead, showMessage = true) {
       if (savedLeads.some(item => item.place_id === lead.place_id)) {
         if (showMessage) toast('Este lead já está salvo.');
-        return;
+        return false;
       }
       savedLeads.push({
         ...lead,
@@ -1616,7 +1634,8 @@
       });
       persistSavedLeads();
       updateCounters();
-      if (showMessage) toast('Lead salvo.');
+      if (showMessage) toast('Lead salvo e movido para aba de Salvos.');
+      return true; 
     }
 
     function persistSavedLeads() {
@@ -1672,8 +1691,7 @@
     }
 
     async function sendLeadByIdToPipedrive(placeId) {
-      const lead = leads.find(item => item.place_id === placeId) ||
-        savedLeads.find(item => item.place_id === placeId);
+      const lead = leads.find(item => item.place_id === placeId) || savedLeads.find(item => item.place_id === placeId);
       if (!lead) {
         toast('Lead não encontrado.');
         return;
@@ -1782,15 +1800,11 @@ Comercial: ${settings.commercial || ''}
         exportedLeads.push(exportedRecord);
       }
       leads = leads.map(item => {
-        if (item.place_id === lead.place_id) {
-          return { ...item, exported: true, exportedAt: exportedRecord.exportedAt };
-        }
+        if (item.place_id === lead.place_id) return { ...item, exported: true, exportedAt: exportedRecord.exportedAt };
         return item;
       });
       savedLeads = savedLeads.map(item => {
-        if (item.place_id === lead.place_id) {
-          return { ...item, exported: true, exportedAt: exportedRecord.exportedAt };
-        }
+        if (item.place_id === lead.place_id) return { ...item, exported: true, exportedAt: exportedRecord.exportedAt };
         return item;
       });
     }
@@ -1839,6 +1853,7 @@ Comercial: ${settings.commercial || ''}
       placesPagination = null;
       isLoadingMore = false;
       currentPage = 1;
+      window.vlHuntRetries = 0;
 
       document.getElementById('selectAllCheckbox').checked = false;
       document.getElementById('paginationControls').innerHTML = '';
