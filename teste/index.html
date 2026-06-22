@@ -268,7 +268,6 @@
 
     .grid-search {
       display: grid;
-      /* Organizado em 3 colunas, logo os 6 elementos formam 2 linhas perfeitas */
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       align-items: end;
@@ -422,7 +421,7 @@
       padding: 16px;
       background: #fff;
       overflow: hidden;
-      min-height: 390px;
+      min-height: 250px; /* Reduzido o min-height pois a foto saiu */
     }
 
     .lead-card.selected {
@@ -441,35 +440,13 @@
       cursor: pointer;
     }
 
-    .lead-photo {
-      width: 100%;
-      height: 145px;
-      border-radius: 14px;
-      object-fit: cover;
-      background: #edf2f7;
-      display: block;
-      margin-bottom: 14px;
-    }
-
-    .lead-photo-placeholder {
-      width: 100%;
-      height: 145px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #e2e8f0, #f8fafc);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 34px;
-      margin-bottom: 14px;
-      color: #94a3b8;
-    }
-
     .lead-title-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: 10px;
       margin-bottom: 10px;
+      margin-top: 8px; /* Adicionado um respiro no topo já que a foto saiu */
     }
 
     .lead-title {
@@ -477,6 +454,7 @@
       font-size: 18px;
       font-weight: 950;
       line-height: 1.2;
+      padding-left: 28px; /* Espaço para o checkbox */
     }
 
     .badge {
@@ -619,6 +597,19 @@
       background: #f8fafc;
     }
 
+    /* ======== MODAL PASTAS ======== */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10000; }
+    .modal { background: #fff; padding: 24px; border-radius: 18px; width: 400px; max-width: 90%; box-shadow: var(--shadow); }
+    .modal h3 { margin-top: 0; font-size: 20px; font-weight: 950; margin-bottom: 8px; color: var(--dark); }
+    .modal p { color: var(--muted); font-size: 13px; margin-bottom: 20px; font-weight: 600;}
+    .modal label { display: block; font-size: 12px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px;}
+    .modal select, .modal input { width: 100%; height: 48px; border: 1px solid #c8d4e6; border-radius: 14px; padding: 0 15px; margin-bottom: 15px; font-family: inherit; font-size: 14px; font-weight: 700;}
+    .modal-divider { text-align: center; margin: 10px 0 20px; color: #94a3b8; font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;}
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+    
+    .folder-filter-wrap { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 14px; }
+    .folder-filter-wrap select { height: 48px; border: 1px solid var(--border); border-radius: 12px; padding: 0 16px; font-weight: 800; font-size: 14px; min-width: 200px; outline: none;}
+
     @media (max-width: 1400px) {
       .grid-search {
         grid-template-columns: 1fr 1fr;
@@ -733,14 +724,14 @@
             <div class="section-icon">🔎</div>
             <div>
               <h3>Buscar leads</h3>
-              <p>Busque de forma abrangente ou exata (auto-carrega até 60 resultados de uma vez).</p>
+              <p>Busque pelo NOME exato, ou utilize NICHO + CIDADE para busca ampla.</p>
             </div>
           </div>
 
           <div class="grid-search">
             <!-- NOME -->
             <div class="field">
-              <label for="nameInput">Nome <span style="font-weight: normal; color: var(--muted); text-transform: none;">(Opcional)</span></label>
+              <label for="nameInput">Nome <span style="font-weight: normal; color: var(--muted); text-transform: none;">(Pesquisa direta)</span></label>
               <input id="nameInput" type="text" placeholder="Ex: Tempero Mineiro" />
             </div>
 
@@ -797,15 +788,8 @@
             </div>
           </div>
 
+          <!-- BOTÕES LIMPOS DA TELA DE PESQUISA -->
           <div class="actions">
-            <button class="btn btn-dark" onclick="showSection('saved')">
-              Ver Leads Salvos
-            </button>
-
-            <button class="btn btn-soft-green" onclick="exportAllCurrentToPipedrive()">
-              Exportar lote Pipedrive
-            </button>
-
             <button class="btn btn-soft-yellow" onclick="clearResults()">
               Limpar resultados e pesquisa
             </button>
@@ -834,10 +818,6 @@
                 Salvar selecionados
               </button>
 
-              <button class="btn btn-dark" onclick="sendSelectedToPipedrive()">
-                Enviar selecionados
-              </button>
-
               <button class="btn btn-soft-gray" onclick="clearSelected()">
                 Limpar seleção
               </button>
@@ -860,11 +840,23 @@
               <div class="section-icon">💾</div>
               <div>
                 <h3>Leads Salvos</h3>
-                <p>Empresas salvas para prospecção.</p>
+                <p>Empresas salvas organizadas por pastas para prospecção.</p>
               </div>
             </div>
 
-            <div class="actions" style="margin-top:0;">
+            <!-- NOVO FILTRO DE PASTAS E BOTÕES DE EXPORTAÇÃO MOVIDOS PARA CÁ -->
+            <div class="actions" style="margin-top:0; align-items: center;">
+              
+              <div class="folder-filter-wrap">
+                <select id="savedFolderFilter" onchange="renderSavedLeads()">
+                  <option value="Todas">Todas as pastas</option>
+                </select>
+              </div>
+
+              <button class="btn btn-dark" onclick="sendSavedToPipedrive()">
+                Exportar Pipedrive
+              </button>
+
               <button class="btn btn-soft-green" onclick="exportSavedToCSV()">
                 Exportar CSV
               </button>
@@ -961,6 +953,29 @@
     </main>
   </div>
 
+  <!-- MODAL DE ESCOLHA DE PASTA -->
+  <div id="folderModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Salvar Leads</h3>
+      <p>Em qual pasta deseja guardar estes leads?</p>
+      
+      <label>Selecionar pasta existente</label>
+      <select id="folderSelect">
+        <option value="">-- Selecione --</option>
+      </select>
+      
+      <div class="modal-divider">OU CRIAR NOVA</div>
+      
+      <label>Nova pasta</label>
+      <input type="text" id="newFolderInput" placeholder="Ex: Victor - Março">
+      
+      <div class="modal-buttons">
+        <button class="btn btn-soft-gray" onclick="closeFolderModal()">Cancelar</button>
+        <button class="btn btn-green" onclick="confirmFolderSave()">Confirmar e Salvar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="map" class="map-hidden"></div>
   <div id="toast" class="toast"></div>
 
@@ -976,6 +991,7 @@
     let exportedLeads = [];
     let selectedLeadIds = new Set();
     let isSearching = false;
+    let pendingLeadsToSave = []; // Nova variável para gerenciar o Modal de Pastas
 
     const STORAGE_KEYS = {
       settings: 'vlhunt_settings_v2',
@@ -987,6 +1003,7 @@
       loadLocalData();
       fillSettingsFields();
       updateCounters();
+      updateFolderFilterDropdown();
       renderSavedLeads();
       renderExportedLeads();
 
@@ -1033,7 +1050,10 @@
       const activeButton = document.querySelector(`.menu-item[data-section="${section}"]`);
       if (activeButton) activeButton.classList.add('active');
 
-      if (section === 'saved') renderSavedLeads();
+      if (section === 'saved') {
+          updateFolderFilterDropdown();
+          renderSavedLeads();
+      }
       if (section === 'pipedrive') renderExportedLeads();
     }
 
@@ -1164,8 +1184,9 @@
       const district = document.getElementById('districtInput').value.trim();
       const street = document.getElementById('streetInput').value.trim();
 
-      if (!niche || !city) {
-        toast('Informe pelo menos nicho e cidade.');
+      // NOVA REGRA DE BUSCA FLEXÍVEL APLICADA
+      if (!name && (!niche || !city)) {
+        toast('Digite o NOME da empresa OU preencha NICHO e CIDADE.');
         return;
       }
 
@@ -1189,10 +1210,10 @@
 
       let queryParts = [];
       if (name) queryParts.push(name);
-      queryParts.push(niche);
+      if (niche) queryParts.push(niche);
       if (street) queryParts.push(`na rua ${street}`);
       if (district) queryParts.push(`bairro ${district}`);
-      queryParts.push(`em ${city}`);
+      if (city) queryParts.push(`em ${city}`);
       
       const query = queryParts.join(' ');
 
@@ -1264,9 +1285,6 @@
     }
 
     function normalizePlace(place) {
-      const photoUrl = place.photos && place.photos.length
-        ? place.photos[0].getUrl({ maxWidth: 900, maxHeight: 360 })
-        : '';
       return {
         place_id: place.place_id,
         name: place.name || '',
@@ -1276,7 +1294,6 @@
         url: place.url || '',
         rating: place.rating || '',
         user_ratings_total: place.user_ratings_total || '',
-        photo: photoUrl,
         status: 'Novo',
         exported: false,
         savedAt: null,
@@ -1305,7 +1322,7 @@
       placesService.getDetails(
         {
           placeId: placeId,
-          fields: ['name', 'formatted_address', 'formatted_phone_number', 'international_phone_number', 'website', 'url', 'rating', 'user_ratings_total', 'photos']
+          fields: ['name', 'formatted_address', 'formatted_phone_number', 'international_phone_number', 'website', 'url', 'rating', 'user_ratings_total']
         },
         (place, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
@@ -1328,10 +1345,7 @@
                 website: place.website || leads[index].website,
                 url: place.url || leads[index].url,
                 rating: place.rating || leads[index].rating,
-                user_ratings_total: place.user_ratings_total || leads[index].user_ratings_total,
-                photo: place.photos && place.photos.length
-                  ? place.photos[0].getUrl({ maxWidth: 900, maxHeight: 360 })
-                  : leads[index].photo
+                user_ratings_total: place.user_ratings_total || leads[index].user_ratings_total
               };
               renderLeads();
             }
@@ -1373,7 +1387,7 @@
       const card = document.createElement('div');
       card.className = 'lead-card';
 
-      if (selectedLeadIds.has(lead.place_id)) {
+      if (source === 'current' && selectedLeadIds.has(lead.place_id)) {
         card.classList.add('selected');
       }
 
@@ -1381,6 +1395,13 @@
       const phoneLabel = lead.phone ? lead.phone : 'Telefone não encontrado';
       const mapsUrl = lead.url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name + ' ' + lead.address)}`;
       const whatsappUrl = lead.phone ? makeWhatsAppUrl(lead.phone, lead.name) : '';
+
+      // Badge de Pasta se for na aba de Salvos
+      const folderBadge = source === 'saved' ? `
+        <div style="margin-bottom: 12px; margin-top: -5px;">
+            <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900;">📁 ${escapeHtml(lead.folder || 'Geral')}</span>
+        </div>
+      ` : '';
 
       card.innerHTML = `
         ${source === 'current' ? `
@@ -1392,14 +1413,10 @@
           />
         ` : ''}
 
-        ${
-          lead.photo
-            ? `<img class="lead-photo" src="${escapeAttr(lead.photo)}" alt="${escapeAttr(lead.name)}" />`
-            : `<div class="lead-photo-placeholder">🏢</div>`
-        }
+        ${folderBadge}
 
-        <div class="lead-title-row">
-          <h4 class="lead-title">${escapeHtml(lead.name)}</h4>
+        <div class="lead-title-row" style="${source === 'saved' ? 'margin-top: 0;' : ''}">
+          <h4 class="lead-title" style="${source === 'saved' ? 'padding-left: 0;' : ''}">${escapeHtml(lead.name)}</h4>
           <span class="badge">${escapeHtml(lead.status || 'Novo')}</span>
         </div>
 
@@ -1431,13 +1448,11 @@
 
           <a class="small-btn btn-soft-gray" href="${escapeAttr(mapsUrl)}" target="_blank">Maps</a>
 
+          ${source === 'current' ? `
           <button class="small-btn btn-soft-green" onclick="saveLeadById('${escapeAttr(lead.place_id)}')">
             Salvar
           </button>
-
-          <button class="small-btn btn-dark" onclick="sendLeadByIdToPipedrive('${escapeAttr(lead.place_id)}')">
-            Pipedrive
-          </button>
+          ` : ''}
         </div>
 
         <div class="lead-status-row">
@@ -1485,17 +1500,63 @@
       return leads.filter(lead => selectedLeadIds.has(lead.place_id));
     }
 
+    // ========== SISTEMA DE PASTAS MODAL ==========
+
+    function openFolderModal() {
+      const select = document.getElementById('folderSelect');
+      const uniqueFolders = [...new Set(savedLeads.map(l => l.folder || 'Geral'))];
+      
+      select.innerHTML = '<option value="">-- Selecione uma pasta existente --</option>';
+      uniqueFolders.forEach(f => {
+         select.innerHTML += `<option value="${escapeAttr(f)}">${escapeHtml(f)}</option>`;
+      });
+      
+      document.getElementById('newFolderInput').value = '';
+      document.getElementById('folderModal').style.display = 'flex';
+    }
+
+    function closeFolderModal() {
+      document.getElementById('folderModal').style.display = 'none';
+      pendingLeadsToSave = [];
+    }
+
+    function confirmFolderSave() {
+      const selectVal = document.getElementById('folderSelect').value;
+      const inputVal = document.getElementById('newFolderInput').value.trim();
+      const folderName = inputVal || selectVal || 'Geral';
+
+      let count = 0;
+      pendingLeadsToSave.forEach(lead => {
+         savedLeads.push({
+            ...lead,
+            folder: folderName,
+            savedAt: new Date().toISOString()
+         });
+         
+         // Remove da tela de busca atual
+         leads = leads.filter(item => item.place_id !== lead.place_id);
+         selectedLeadIds.delete(lead.place_id);
+         count++;
+      });
+
+      persistSavedLeads();
+      updateFolderFilterDropdown();
+      renderSavedLeads();
+      renderLeads();
+      updateCounters();
+      closeFolderModal();
+      toast(`✅ ${count} lead(s) salvo(s) na pasta "${folderName}".`);
+    }
+
     function saveLeadById(placeId) {
-      const leadIndex = leads.findIndex(item => item.place_id === placeId);
-      if (leadIndex !== -1) {
-         const leadToSave = leads[leadIndex];
-         if (saveLead(leadToSave, true)) {
-            leads.splice(leadIndex, 1);
-            selectedLeadIds.delete(placeId);
-            renderLeads();
+      const lead = leads.find(item => item.place_id === placeId);
+      if (lead) {
+         if (savedLeads.some(item => item.place_id === lead.place_id)) {
+            toast('Este lead já está salvo.');
+            return;
          }
-      } else {
-         toast('Lead já salvo ou não encontrado.');
+         pendingLeadsToSave = [lead];
+         openFolderModal();
       }
     }
 
@@ -1506,65 +1567,80 @@
         return;
       }
       
-      let count = 0;
-      selected.forEach(lead => {
-         if (saveLead(lead, false)) {
-            count++;
-         }
-      });
-
-      leads = leads.filter(item => !selectedLeadIds.has(item.place_id));
-      selectedLeadIds.clear();
-
-      persistSavedLeads();
-      renderSavedLeads();
-      renderLeads();
-      updateCounters();
-      toast(`${count} leads salvos (enviados p/ aba Salvos).`);
-    }
-
-    function saveLead(lead, showMessage = true) {
-      if (savedLeads.some(item => item.place_id === lead.place_id)) {
-        if (showMessage) toast('Este lead já está salvo.');
-        return false;
+      pendingLeadsToSave = selected.filter(lead => !savedLeads.some(s => s.place_id === lead.place_id));
+      
+      if (!pendingLeadsToSave.length) {
+         toast('Todos os leads selecionados já estão salvos.');
+         return;
       }
-      savedLeads.push({
-        ...lead,
-        savedAt: new Date().toISOString()
-      });
-      persistSavedLeads();
-      updateCounters();
-      if (showMessage) toast('Lead salvo e movido para aba de Salvos.');
-      return true; 
+      openFolderModal();
     }
+
+    // =============================================
 
     function persistSavedLeads() {
       localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(savedLeads));
     }
 
+    // ========== FILTRO DE PASTAS NA ABA SALVOS ==========
+
+    function updateFolderFilterDropdown() {
+      const filter = document.getElementById('savedFolderFilter');
+      if(!filter) return;
+      const currentVal = filter.value;
+      const uniqueFolders = [...new Set(savedLeads.map(l => l.folder || 'Geral'))];
+      
+      filter.innerHTML = '<option value="Todas">Todas as pastas</option>';
+      uniqueFolders.forEach(f => {
+         filter.innerHTML += `<option value="${escapeAttr(f)}">${escapeHtml(f)}</option>`;
+      });
+      
+      if (uniqueFolders.includes(currentVal) || currentVal === 'Todas') {
+         filter.value = currentVal;
+      }
+    }
+
+    function getFilteredSavedLeads() {
+      const filterVal = document.getElementById('savedFolderFilter').value;
+      if (filterVal === 'Todas') return savedLeads;
+      return savedLeads.filter(l => (l.folder || 'Geral') === filterVal);
+    }
+
     function renderSavedLeads() {
       const grid = document.getElementById('savedGrid');
       const empty = document.getElementById('savedEmpty');
+      
       grid.innerHTML = '';
-      if (!savedLeads.length) {
+      const filteredLeads = getFilteredSavedLeads();
+
+      if (!filteredLeads.length) {
         empty.classList.remove('hidden');
         updateCounters();
         return;
       }
+      
       empty.classList.add('hidden');
-      savedLeads.forEach(lead => {
+      filteredLeads.forEach(lead => {
         grid.appendChild(createLeadCard(lead, 'saved'));
       });
       updateCounters();
     }
 
     function clearSavedLeads() {
-      if (!confirm('Deseja apagar todos os leads salvos?')) return;
-      savedLeads = [];
+      const filterVal = document.getElementById('savedFolderFilter').value;
+      if (filterVal === 'Todas') {
+         if (!confirm('Deseja apagar TODOS os leads de TODAS as pastas?')) return;
+         savedLeads = [];
+      } else {
+         if (!confirm(`Deseja apagar TODOS os leads da pasta "${filterVal}"?`)) return;
+         savedLeads = savedLeads.filter(l => (l.folder || 'Geral') !== filterVal);
+      }
+      
       persistSavedLeads();
+      updateFolderFilterDropdown();
       renderSavedLeads();
       updateCounters();
-      toast('Leads salvos apagados.');
+      toast('Leads apagados com sucesso.');
     }
 
     function changeLeadStatus(placeId, status) {
@@ -1581,36 +1657,20 @@
       renderSavedLeads();
     }
 
-    async function sendSelectedToPipedrive() {
-      const selected = getSelectedLeads();
-      if (!selected.length) {
-        toast('Selecione pelo menos um lead.');
+    // EXPORTAÇÕES AGORA SÃO BASEADAS NO FILTRO DE PASTA
+    async function sendSavedToPipedrive() {
+      const list = getFilteredSavedLeads();
+      if (!list.length) {
+        toast('Nenhum lead na pasta atual para exportar.');
         return;
       }
-      await sendLeadsToPipedrive(selected);
-    }
-
-    async function sendLeadByIdToPipedrive(placeId) {
-      const lead = leads.find(item => item.place_id === placeId) || savedLeads.find(item => item.place_id === placeId);
-      if (!lead) {
-        toast('Lead não encontrado.');
-        return;
-      }
-      await sendLeadsToPipedrive([lead]);
-    }
-
-    async function exportAllCurrentToPipedrive() {
-      if (!leads.length) {
-        toast('Nenhum lead na tela para exportar.');
-        return;
-      }
-      await sendLeadsToPipedrive(leads);
+      await sendLeadsToPipedrive(list);
     }
 
     async function sendLeadsToPipedrive(list) {
       const settings = getSettings();
       if (!settings.pipedriveToken) {
-        toast('Configure o token do Pipedrive primeiro.');
+        toast('Configure o token do Pipedrive primeiro na aba Configurações.');
         showSection('settings');
         return;
       }
@@ -1619,6 +1679,8 @@
       toast(`Enviando ${list.length} lead(s) para o Pipedrive...`);
 
       for (const lead of list) {
+        if(lead.exported) continue; // Evita re-exportar os mesmos acidentalmente
+        
         try {
           await sendOneLeadToPipedrive(lead, settings);
           markLeadAsExported(lead);
@@ -1638,7 +1700,7 @@
       if (failed) {
         toast(`${success} enviado(s), ${failed} com erro.`);
       } else {
-        toast(`${success} lead(s) enviado(s) para o Pipedrive.`);
+        toast(`${success} lead(s) novo(s) enviado(s) para o Pipedrive.`);
       }
     }
 
@@ -1676,6 +1738,7 @@ Site: ${lead.website || 'Não encontrado'}
 Endereço: ${lead.address || 'Não encontrado'}
 Google Maps: ${lead.url || ''}
 Avaliação: ${lead.rating || 'Sem avaliação'}
+Pasta VL Hunt: ${lead.folder || 'Geral'}
 Comercial: ${settings.commercial || ''}
       `.trim();
 
@@ -1767,21 +1830,23 @@ Comercial: ${settings.commercial || ''}
     }
 
     function exportSavedToCSV() {
-      if (!savedLeads.length) {
-        toast('Nenhum lead salvo para exportar.');
+      const list = getFilteredSavedLeads();
+      if (!list.length) {
+        toast('Nenhum lead na pasta atual para exportar.');
         return;
       }
-      const headers = ['Empresa', 'Telefone', 'Site', 'Endereço', 'Avaliação', 'Total de avaliações', 'Status', 'Google Maps'];
-      const rows = savedLeads.map(lead => [
+      const headers = ['Empresa', 'Telefone', 'Site', 'Endereço', 'Avaliação', 'Pasta', 'Status', 'Google Maps'];
+      const rows = list.map(lead => [
         lead.name || '', lead.phone || '', lead.website || '', lead.address || '', lead.rating || '',
-        lead.user_ratings_total || '', lead.status || '', lead.url || ''
+        lead.folder || 'Geral', lead.status || '', lead.url || ''
       ]);
       const csv = [headers, ...rows].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n');
       const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `leads-salvos-${new Date().toISOString().slice(0, 10)}.csv`;
+      const folderName = document.getElementById('savedFolderFilter').value;
+      a.download = `leads-${folderName}-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast('CSV exportado.');
