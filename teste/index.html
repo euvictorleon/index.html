@@ -137,7 +137,6 @@
       <h2>VL Hunt</h2>
       <p>Acesso restrito. Faça login para continuar.</p>
       
-      <!-- Corrigido para NÃO recarregar a página -->
       <form id="loginForm">
         <input type="email" id="loginEmail" placeholder="Seu e-mail cadastrado" required autocomplete="email" />
         <input type="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password" />
@@ -173,12 +172,10 @@
           📥 Pipedrive
         </button>
 
-        <!-- Este botão será escondido se o usuário não for Admin -->
         <button class="menu-item" id="navSettingsBtn" data-section="settings" onclick="showSection('settings')">
           ⚙️ Configurações
         </button>
 
-        <!-- Botão de Sair -->
         <button class="menu-item logout-btn" onclick="handleSupabaseLogout()">
           🚪 Sair do Sistema
         </button>
@@ -404,19 +401,19 @@
               <div class="section-icon">⚙️</div>
               <div>
                 <h3>Configurações do Administrador</h3>
-                <p>Configure as chaves de API do sistema.</p>
+                <p>Configure as chaves de API. Estas chaves valem para todos os usuários.</p>
               </div>
             </div>
 
             <div class="grid-2">
               <div class="field">
                 <label for="googleApiKeyInput">API Key Google Maps</label>
-                <input id="googleApiKeyInput" type="password" autocomplete="new-password" placeholder="Cole sua API Key do Google Maps" />
+                <input id="googleApiKeyInput" type="password" autocomplete="new-password" placeholder="Chave carregada do banco de dados..." />
               </div>
 
               <div class="field">
                 <label for="pipedriveTokenInput">Token Pipedrive</label>
-                <input id="pipedriveTokenInput" type="password" autocomplete="new-password" placeholder="Cole seu token do Pipedrive" />
+                <input id="pipedriveTokenInput" type="password" autocomplete="new-password" placeholder="Token do Pipedrive (opcional)..." />
               </div>
             </div>
 
@@ -464,8 +461,22 @@
     <div id="map" class="map-hidden"></div>
     <div id="toast" class="toast"></div>
 
-    <!-- SCRIPTS CORE DO SISTEMA -->
+    <!-- BIBLIOTECA SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- SCRIPT ÚNICO E INTEGRADO DO SISTEMA -->
     <script>
+      // ============================================
+      // CONFIGURAÇÕES SUPABASE E VARIÁVEIS GLOBAIS
+      // ============================================
+      const supabaseUrl = 'https://sowbnurzaukkxybqbtxa.supabase.co';
+      const supabaseKey = 'sb_publishable_36PhUy-41qXKbCXG7OQkrA_fOiKgUOK';
+      const supa = window.supabase.createClient(supabaseUrl, supabaseKey);
+      const ADMIN_EMAILS = ['leonvquadros@gmail.com']; 
+
+      // Variável Global para armazenar as chaves lidas do Banco de Dados
+      let configSupabase = { googleApiKey: '', pipedriveToken: '' };
+
       let map = null;
       let placesService = null;
       let detailsQueue = [];
@@ -482,14 +493,82 @@
       let isUserAdmin = false; 
 
       const STORAGE_KEYS = {
-        settings: 'vlhunt_settings_v3',
         saved: 'vlhunt_saved_leads_v2',
         exported: 'vlhunt_exported_leads_v2'
       };
 
-      document.addEventListener('DOMContentLoaded', () => {
+      // ============================================
+      // FUNÇÕES DE AUTENTICAÇÃO E INICIALIZAÇÃO
+      // ============================================
+
+      function formatUserNameFromEmail(email) {
+        let namePart = email.split('@')[0].replace(/[._-]/g, ' '); 
+        let words = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+        let fullName = words.join(' ');
+        let initials = words.length > 1 ? words[0].charAt(0) + words[1].charAt(0) : words[0].charAt(0);
+        return { fullName, initials };
+      }
+
+      async function iniciarSistemaApp(email) {
+        currentUserEmail = email;
+        isUserAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+
+        const userInfo = formatUserNameFromEmail(email);
+        currentUserFullName = userInfo.fullName; 
+        document.getElementById('topUserName').textContent = userInfo.fullName;
+        document.getElementById('topUserInitials').textContent = userInfo.initials;
+
+        const navSettingsBtn = document.getElementById('navSettingsBtn');
+        if (isUserAdmin) {
+            navSettingsBtn.style.display = 'flex';
+        } else {
+            navSettingsBtn.style.display = 'none';
+        }
+
+        showSection('extract');
+
+        // BUSCA AS CHAVES DO SUPABASE AO ENTRAR NO SISTEMA
+        await carregarConfiguracoesDoSupabase();
+      }
+
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+        
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        const btn = document.getElementById('loginBtn');
+        
+        btn.textContent = "Validando acesso..."; 
+        btn.disabled = true;
+
+        try {
+          const { data, error } = await supa.auth.signInWithPassword({ email: email, password: password });
+          if (error) {
+            alert('Erro no login: E-mail ou senha incorretos.');
+            btn.textContent = "Entrar no Sistema"; 
+            btn.disabled = false;
+          } else {
+            iniciarSistemaApp(data.user.email);
+          }
+        } catch(err) {
+            alert('Erro de conexão com o servidor.');
+            btn.textContent = "Entrar no Sistema"; 
+            btn.disabled = false;
+        }
+      });
+
+      async function handleSupabaseLogout() {
+        if(confirm('Tem certeza que deseja sair?')) {
+            await supa.auth.signOut();
+            window.location.reload(); 
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
         loadLocalData();
-        fillSettingsFields();
         updateCounters();
         updateFolderFilterDropdown();
         renderSavedLeads();
@@ -507,11 +586,6 @@
         document.getElementById('districtInput').value = savedDistrict;
         document.getElementById('streetInput').value = savedStreet;
 
-        const settings = getSettings();
-        if (settings.googleApiKey) {
-          loadGoogleMapsScript(settings.googleApiKey);
-        }
-
         const searchFields = document.querySelectorAll('#nameInput, #nicheInput, #cityInput, #districtInput, #streetInput');
         searchFields.forEach(field => {
           field.addEventListener('keypress', (event) => {
@@ -521,7 +595,119 @@
             }
           });
         });
+
+        // Verifica se usuário já está logado
+        const { data: { session } } = await supa.auth.getSession();
+        if (session) {
+           iniciarSistemaApp(session.user.email);
+        }
       });
+
+      // ============================================
+      // FUNÇÕES DE CONFIGURAÇÃO (AGORA INTEGRADAS AO SUPABASE)
+      // ============================================
+
+      async function carregarConfiguracoesDoSupabase() {
+        try {
+          const { data, error } = await supa.from('configuracoes').select('*').limit(1);
+          if (error) {
+             console.error('Erro ao buscar configs:', error);
+             return;
+          }
+          
+          if (data && data.length > 0) {
+             configSupabase.googleApiKey = data[0].google_api_key || '';
+             configSupabase.pipedriveToken = data[0].pipedrive_token || '';
+             
+             // Se tiver a chave do Google, já injeta no mapa
+             if (configSupabase.googleApiKey) {
+                 loadGoogleMapsScript(configSupabase.googleApiKey);
+             }
+             
+             // Preenche os campos da aba de configurações visualmente
+             const gKeyInput = document.getElementById('googleApiKeyInput');
+             const pKeyInput = document.getElementById('pipedriveTokenInput');
+             if(gKeyInput) gKeyInput.value = configSupabase.googleApiKey;
+             if(pKeyInput) pKeyInput.value = configSupabase.pipedriveToken;
+          }
+        } catch (err) {
+          console.error('Erro geral ao carregar config:', err);
+        }
+      }
+
+      // Função reescrita: agora ela apenas retorna o que já foi lido do Supabase
+      function getSettings() {
+        return {
+          googleApiKey: configSupabase.googleApiKey,
+          pipedriveToken: configSupabase.pipedriveToken
+        };
+      }
+
+      // Função reescrita: salva diretamente no Supabase em vez de salvar no localStorage
+      async function saveSettings() {
+        const gKey = document.getElementById('googleApiKeyInput').value.trim();
+        const pToken = document.getElementById('pipedriveTokenInput').value.trim();
+
+        const btn = document.querySelector('button[onclick="saveSettings()"]');
+        const oldText = btn.textContent;
+        btn.textContent = 'Salvando no banco...';
+        btn.disabled = true;
+
+        try {
+          // Verifica se já existe uma linha para atualizar, ou se precisa inserir
+          const { data: existe } = await supa.from('configuracoes').select('id').limit(1);
+          let error;
+          
+          if (existe && existe.length > 0) {
+              const res = await supa.from('configuracoes').update({ 
+                  google_api_key: gKey, pipedrive_token: pToken 
+              }).eq('id', existe[0].id);
+              error = res.error;
+          } else {
+              const res = await supa.from('configuracoes').insert([{ 
+                  google_api_key: gKey, pipedrive_token: pToken 
+              }]);
+              error = res.error;
+          }
+
+          if (error) throw error;
+
+          // Atualiza as chaves na memória
+          configSupabase.googleApiKey = gKey;
+          configSupabase.pipedriveToken = pToken;
+
+          toast('Configurações salvas para todos os usuários!');
+          if (gKey) loadGoogleMapsScript(gKey);
+
+        } catch (err) {
+          console.error(err);
+          toast('Erro ao salvar no banco de dados!');
+        } finally {
+          btn.textContent = oldText;
+          btn.disabled = false;
+        }
+      }
+
+      async function clearSettings() {
+        if (!confirm('Deseja limpar as chaves de acesso para TODOS os usuários?')) return;
+        document.getElementById('googleApiKeyInput').value = '';
+        document.getElementById('pipedriveTokenInput').value = '';
+        await saveSettings();
+        toast('Configurações limpas.');
+      }
+
+      function reloadGoogleMapsScript() {
+        const settings = getSettings();
+        if (!settings.googleApiKey) {
+          toast('Nenhuma API Key do Google encontrada no banco de dados.');
+          return;
+        }
+        loadGoogleMapsScript(settings.googleApiKey, true);
+      }
+
+      // ============================================
+      // RESTANTE DO CÓDIGO DO SISTEMA (MAPS, LEADS, PIPEDRIVE, ETC)
+      // ============================================
 
       function showSection(section) {
         if (section === 'settings' && !isUserAdmin) {
@@ -554,54 +740,13 @@
         const el = document.getElementById('toast');
         el.textContent = message;
         el.style.display = 'block';
-
         clearTimeout(window.__toastTimer);
-        window.__toastTimer = setTimeout(() => {
-          el.style.display = 'none';
-        }, 3500); 
+        window.__toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3500); 
       }
 
       function loadLocalData() {
         try { savedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.saved) || '[]'); } catch { savedLeads = []; }
         try { exportedLeads = JSON.parse(localStorage.getItem(STORAGE_KEYS.exported) || '[]'); } catch { exportedLeads = []; }
-      }
-
-      function getSettings() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.settings) || '{}'); } catch { return {}; }
-      }
-
-      function fillSettingsFields() {
-        const settings = getSettings();
-        document.getElementById('googleApiKeyInput').value = settings.googleApiKey || '';
-        document.getElementById('pipedriveTokenInput').value = settings.pipedriveToken || '';
-      }
-
-      function saveSettings() {
-        const settings = {
-          googleApiKey: document.getElementById('googleApiKeyInput').value.trim(),
-          pipedriveToken: document.getElementById('pipedriveTokenInput').value.trim()
-        };
-
-        localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
-        toast('Configurações salvas.');
-
-        if (settings.googleApiKey) loadGoogleMapsScript(settings.googleApiKey);
-      }
-
-      function clearSettings() {
-        if (!confirm('Deseja limpar as configurações?')) return;
-        localStorage.removeItem(STORAGE_KEYS.settings);
-        fillSettingsFields();
-        toast('Configurações limpas.');
-      }
-
-      function reloadGoogleMapsScript() {
-        const settings = getSettings();
-        if (!settings.googleApiKey) {
-          toast('Informe e salve a API Key do Google Maps primeiro.');
-          return;
-        }
-        loadGoogleMapsScript(settings.googleApiKey, true);
       }
 
       function loadGoogleMapsScript(apiKey, forceReload = false) {
@@ -627,7 +772,7 @@
         const mapEl = document.getElementById('map');
         map = new google.maps.Map(mapEl, { center: { lat: -23.4205, lng: -51.9333 }, zoom: 13 });
         placesService = new google.maps.places.PlacesService(map);
-        toast('Google Maps conectado!');
+        toast('Google Maps conectado com sucesso!');
       }
 
       function updateCounters() {
@@ -662,7 +807,7 @@
         if (!name && (!niche || !city)) { toast('Digite o NOME ou NICHO+CIDADE.'); return; }
         const settings = getSettings();
         if (!settings.googleApiKey) {
-          toast('Configure a API Key do Google Maps primeiro.');
+          toast('O Administrador precisa configurar a API do Google Maps.');
           if (isUserAdmin) showSection('settings');
           return;
         }
@@ -916,7 +1061,7 @@
 
         const settings = getSettings();
         if (!settings.pipedriveToken) {
-          toast('Configure o token do Pipedrive.');
+          toast('O token do Pipedrive não está configurado.');
           if (isUserAdmin) showSection('settings');
           return;
         }
@@ -929,22 +1074,18 @@
           try {
             const token = encodeURIComponent(settings.pipedriveToken);
             
-            // 1. Cria Org
             const orgRes = await fetch(`https://api.pipedrive.com/v1/organizations?api_token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: lead.name, address: lead.address }) });
             const orgData = await orgRes.json();
             if (!orgRes.ok || !orgData.success) throw new Error('Erro Org');
             const orgId = orgData.data.id;
 
-            // 2. Cria Deal com Nome do Usuário
             const dealRes = await fetch(`https://api.pipedrive.com/v1/deals?api_token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `${lead.name} - ${currentUserFullName}`, org_id: orgId, status: 'open' }) });
             const dealData = await dealRes.json();
             if (!dealRes.ok || !dealData.success) throw new Error('Erro Deal');
 
-            // 3. Cria Nota
             const noteContent = `Empresa: ${lead.name}\nTelefone: ${lead.phone || '-'}\nSite: ${lead.website || '-'}\nEndereço: ${lead.address || '-'}\nMaps: ${lead.url || '-'}\nAvaliação: ${lead.rating || '-'}\nPasta: ${lead.folder || 'Geral'}\nComercial Responsável: ${currentUserFullName}`;
             await fetch(`https://api.pipedrive.com/v1/notes?api_token=${token}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: noteContent, deal_id: dealData.data.id, org_id: orgId }) });
 
-            // Marca Exportado
             const expRecord = { ...lead, exported: true, exportedAt: new Date().toISOString() };
             if (!exportedLeads.some(i => i.place_id === lead.place_id)) exportedLeads.push(expRecord);
             leads = leads.map(i => i.place_id === lead.place_id ? { ...i, exported: true, exportedAt: expRecord.exportedAt } : i);
@@ -994,93 +1135,6 @@
       }
       function escapeHtml(v) { return String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
       function escapeAttr(v) { return escapeHtml(v).replace(/`/g, '&#096;'); }
-    </script>
-
-    <!-- SUPABASE E AUTENTICAÇÃO -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-      const supabaseUrl = 'https://sowbnurzaukkxybqbtxa.supabase.co';
-      const supabaseKey = 'sb_publishable_36PhUy-41qXKbCXG7OQkrA_fOiKgUOK';
-      
-      // SOLUÇÃO DO BUG: Trocamos o nome da variável "supabase" para "supa" 
-      // Isso impede que o navegador confunda com a biblioteca principal e quebre o código
-      const supa = window.supabase.createClient(supabaseUrl, supabaseKey);
-      
-      const ADMIN_EMAILS = ['leonvquadros@gmail.com']; 
-
-      function formatUserNameFromEmail(email) {
-        let namePart = email.split('@')[0];
-        namePart = namePart.replace(/[._-]/g, ' '); 
-        let words = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-        
-        let fullName = words.join(' ');
-        let initials = words.length > 1 ? words[0].charAt(0) + words[1].charAt(0) : words[0].charAt(0);
-        return { fullName, initials };
-      }
-
-      function iniciarSistemaApp(email) {
-        currentUserEmail = email;
-        isUserAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
-
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-
-        const userInfo = formatUserNameFromEmail(email);
-        currentUserFullName = userInfo.fullName; 
-        document.getElementById('topUserName').textContent = userInfo.fullName;
-        document.getElementById('topUserInitials').textContent = userInfo.initials;
-
-        const navSettingsBtn = document.getElementById('navSettingsBtn');
-        if (isUserAdmin) {
-            navSettingsBtn.style.display = 'flex';
-        } else {
-            navSettingsBtn.style.display = 'none';
-        }
-
-        showSection('extract');
-      }
-
-      // NOVO: Adicionado um listener para impedir 100% que a página recarregue no Enter
-      document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // <-- O que salva a gente do refresh chato!
-        
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value.trim();
-        const btn = document.getElementById('loginBtn');
-        
-        btn.textContent = "Validando acesso..."; 
-        btn.disabled = true;
-
-        try {
-          const { data, error } = await supa.auth.signInWithPassword({ email: email, password: password });
-
-          if (error) {
-            alert('Erro no login: E-mail ou senha incorretos.');
-            btn.textContent = "Entrar no Sistema"; 
-            btn.disabled = false;
-          } else {
-            iniciarSistemaApp(data.user.email);
-          }
-        } catch(err) {
-            alert('Erro de conexão com o servidor.');
-            btn.textContent = "Entrar no Sistema"; 
-            btn.disabled = false;
-        }
-      });
-
-      async function handleSupabaseLogout() {
-        if(confirm('Tem certeza que deseja sair?')) {
-            await supa.auth.signOut();
-            window.location.reload(); 
-        }
-      }
-
-      document.addEventListener('DOMContentLoaded', async () => {
-        const { data: { session } } = await supa.auth.getSession();
-        if (session) {
-           iniciarSistemaApp(session.user.email);
-        }
-      });
     </script>
   </div>
 </body>
