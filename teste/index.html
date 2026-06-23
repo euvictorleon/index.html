@@ -90,6 +90,14 @@
       margin-bottom: 16px;
       display: none;
     }
+
+    /* MATANDO O OLHO NATIVO DO NAVEGADOR (EDGE/CHROME) */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear,
+    input[type="password"]::-webkit-contacts-auto-fill-button,
+    input[type="password"]::-webkit-credentials-auto-fill-button {
+      display: none !important;
+    }
     /* ------------------------ */
 
     .app {
@@ -742,11 +750,17 @@
       <div class="field" style="position: relative;">
         <label>Senha</label>
         <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key === 'Enter') handleLogin()" style="padding-right: 40px;" />
-        <!-- Olhinho com z-index ajustado (agora funcionando) -->
-        <span id="togglePasswordBtn" onclick="togglePassword()" style="position: absolute; right: 15px; top: 35px; cursor: pointer; font-size: 18px; user-select: none; z-index: 10;">👁️</span>
+        <!-- Olhinho transformado em botão para não bugar -->
+        <button type="button" id="togglePasswordBtn" onclick="togglePassword()" style="position: absolute; right: 10px; top: 32px; background: transparent; border: none; font-size: 18px; cursor: pointer; padding: 5px; z-index: 99;">👁️</button>
       </div>
       
       <button class="btn btn-green" style="width: 100%; margin-top: 8px;" onclick="handleLogin()" id="loginBtn">Entrar no Sistema</button>
+      
+      <!-- BOTÃO DE EMERGÊNCIA DE VOLTA -->
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="#" onclick="forceEmergencyBypass(event)" style="color: var(--muted); font-size: 13px; font-weight: 800; text-decoration: underline;">🆘 Pular Login (Emergência)</a>
+      </div>
+
     </div>
   </div>
 
@@ -1223,7 +1237,7 @@
   </script>
 
   <!-- ----------------------------------------------------------- -->
-  <!-- SCRIPT DE AUTENTICAÇÃO FECHADO E SEGURO -->
+  <!-- SCRIPT DE AUTENTICAÇÃO -->
   <!-- ----------------------------------------------------------- -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -1242,7 +1256,15 @@
     const appContent = document.getElementById('appContent');
     const loginError = document.getElementById('loginError');
 
-    // OLHINHO SEGURO E FUNCIONANDO (Z-INDEX CORRIGIDO)
+    // BOTÃO DE EMERGÊNCIA (O SALVADOR)
+    function forceEmergencyBypass(e) {
+      if(e) e.preventDefault();
+      loginScreen.style.display = 'none';
+      appContent.style.display = 'flex';
+      toast('Modo de emergência ativado!');
+    }
+
+    // OLHINHO FUNCIONANDO
     function togglePassword() {
       const pwdInput = document.getElementById('loginPassword');
       const toggleBtn = document.getElementById('togglePasswordBtn');
@@ -1255,7 +1277,6 @@
       }
     }
 
-    // ALTERNA ENTRE TELA DE LOGIN E O SISTEMA
     function toggleAppVisibility(session) {
       if (session) {
         loginScreen.style.display = 'none';
@@ -1274,11 +1295,10 @@
         toggleAppVisibility(session);
       });
     } else {
-      loginError.textContent = "Erro de conexão com o banco de dados. Atualize a página.";
+      loginError.textContent = "Erro de conexão com o banco de dados.";
       loginError.style.display = 'block';
     }
 
-    // FUNÇÃO DE LOGIN 100% FECHADA (SÓ ENTRA QUEM TEM CONTA)
     async function handleLogin() {
       try {
         const email = document.getElementById('loginEmail').value.trim();
@@ -1302,7 +1322,6 @@
         });
 
         if (error) {
-          // Exibe a mensagem de erro formatada para o usuário entender o motivo
           loginError.style.background = 'var(--danger-soft)';
           loginError.style.color = '#be123c';
           loginError.textContent = 'Acesso Negado: E-mail ou senha incorretos.';
@@ -1319,7 +1338,6 @@
       }
     }
 
-    // FUNÇÃO SAIR
     async function handleLogout() {
       if(supabase) await supabase.auth.signOut();
     }
